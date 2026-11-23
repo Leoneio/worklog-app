@@ -1,6 +1,6 @@
 {
   "provider": "github",
-  "token": "",
+  "token": "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",
   "repo": "worklog-data",
   "path": "worklog.json",
   "auto": true
