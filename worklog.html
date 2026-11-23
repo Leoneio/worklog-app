@@ -1578,7 +1578,7 @@ const BUILTIN_TOKEN = '';   /* 公开部署版：不内置 Token，改由同目�
 function defaultSync(){
   return {
     provider:'github', token:BUILTIN_TOKEN, repo:'worklog-data', path:'worklog.json', owner:'', branch:'',
-    httpGet:'', httpPut:'', httpToken:'', httpUser:'', httpPass:'', auto:true, lastAt:0
+    httpGet:'', httpPut:'', httpToken:'', httpUser:'', httpPass:'', auto:true, lastAt:0, apiBase:''
   };
 }
 let syncCfg = (function(){
@@ -1727,7 +1727,8 @@ function mergeFull(remote){
 }
 
 /* --- GitHub --- */
-const GH = 'https://api.github.com';
+const GH_DEFAULT = 'https://api.github.com';
+function ghBase(){ return String(syncCfg.apiBase || GH_DEFAULT).replace(/\/+$/,''); }
 function ghHeaders(){
   return {
     'Authorization': 'token ' + syncCfg.token,
@@ -1736,7 +1737,7 @@ function ghHeaders(){
   };
 }
 async function ghFetch(pathText, opts){
-  const res = await fetch(GH + pathText, Object.assign({headers: ghHeaders()}, opts||{}));
+  const res = await fetch(ghBase() + pathText, Object.assign({headers: ghHeaders()}, opts||{}));
   const text = await res.text();
   let data = null;
   try{ data = text ? JSON.parse(text) : null; }catch(e){}
@@ -1803,7 +1804,7 @@ async function ensureGhTarget(){
 async function ghGetJson(name, etag){
   const headers = { 'Authorization':'token ' + syncCfg.token, 'Accept':'application/vnd.github+json' };
   if(etag) headers['If-None-Match'] = etag;
-  const res = await fetch(GH + ghContentsUrl(name), { headers: headers, cache:'no-store' });
+  const res = await fetch(ghBase() + ghContentsUrl(name), { headers: headers, cache:'no-store' });
   if(res.status === 304) return { status:'304' };
   if(res.status === 404) return { status:'404' };
   if(res.status === 403 || res.status === 429) return { status:'err', msg:'GitHub 限流，稍后自动重试' };
@@ -2080,6 +2081,7 @@ async function initSyncAfterAuth(){
     if(rc.token) syncCfg.token = String(rc.token).trim();
     if(rc.repo) syncCfg.repo = String(rc.repo).trim();
     if(rc.path) syncCfg.path = String(rc.path).trim();
+    if(rc.apiBase) syncCfg.apiBase = String(rc.apiBase).trim();
     if(typeof rc.auto === 'boolean') syncCfg.auto = rc.auto;
     syncCfg.owner = ''; syncCfg.branch = '';   /* 换仓库/换账号时重新探测 */
     etagA = null; shaMap && Object.keys(shaMap).forEach(k=>delete shaMap[k]);
